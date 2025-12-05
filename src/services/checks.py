@@ -1,20 +1,22 @@
 from typing import Dict, Any, List
 from ..schemas import CheckResult
 
+AVAILABLE_CHECKS = {}
 
 def check_blacklist_words(text: str, recipients: List[str], params: Dict[str, Any]) -> CheckResult:
     words = params.get("words", ["free", "viagra", "casino"])
     text_lower = text.lower()
     hits = [w for w in words if w in text_lower]
     max_hits = params.get("max_hits", 3)
-    score = min(len(hits) / max(len(max_hits), 1), 1.0)
+    score = min(len(hits) / max(max_hits, 1), 1.0)
 
     return CheckResult(
         name="blacklist",
         passed=len(hits) == 0,
         score=score,
-        details={"hits": hits},
+        details={"hits": hits, "count": len(hits), "max_hits": max_hits},
     )
+AVAILABLE_CHECKS["blacklist"] = check_blacklist_words
 
 
 def check_links(text: str, recipients: List[str], params: Dict[str, Any]) -> CheckResult:
@@ -31,6 +33,7 @@ def check_links(text: str, recipients: List[str], params: Dict[str, Any]) -> Che
         score=score,
         details={"links": urls, "count": len(urls), "max_links": max_links},
     )
+AVAILABLE_CHECKS["links"] = check_links
 
 
 def check_phone_numbers(text: str, recipients: List[str], params: Dict[str, Any]) -> CheckResult:
@@ -49,10 +52,6 @@ def check_phone_numbers(text: str, recipients: List[str], params: Dict[str, Any]
         score=score,
         details={"phones": phones}
     )
+AVAILABLE_CHECKS["phone"] = check_phone_numbers
 
-AVAILABLE_CHECKS = {
-    "blacklist": check_blacklist_words,
-    "links": check_links,
-    "phone": check_phone_numbers,
-}
 
