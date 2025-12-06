@@ -108,3 +108,23 @@ def length_check(text: str, params: Dict[str, Any]) -> CheckResult:
     )
 
 AVAILABLE_CHECKS["message_length"] = length_check
+
+
+def check_email_addresses(text: str, params: Dict[str, Any]) -> CheckResult:
+    import re
+
+    # Простая и рабочая регулярка для email
+    pattern = r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+
+    emails = re.findall(pattern, text)
+
+    passed = len(emails) > 0
+    score = 1.0 if emails else 0.0
+
+    return CheckResult(
+        name="email_addresses",
+        passed=passed,
+        score=score,
+        details={"emails": emails}
+    )
+AVAILABLE_CHECKS["email_addresses"] = check_email_addresses
