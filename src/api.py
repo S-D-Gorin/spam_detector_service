@@ -6,10 +6,9 @@ router = APIRouter()
 
 
 def get_detector() -> SpamDetector:
-    # тут можно внедрять зависимости (конфиги, БД, модели)
     return SpamDetector()
 
 
 @router.post("/check", response_model=SpamResponse)
-def check_spam(req: SpamRequest, detector: SpamDetector = Depends(get_detector)):
-    return detector.run(req)
+async def check_spam(req: SpamRequest, detector: SpamDetector = Depends(get_detector)):
+    return await detector.run(req)
