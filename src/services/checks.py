@@ -3,7 +3,7 @@ from ..schemas import CheckResult
 
 AVAILABLE_CHECKS = {}
 
-def check_blacklist_words(text: str, params: Dict[str, Any]) -> CheckResult:
+def blacklist_words_check(text: str, params: Dict[str, Any]) -> CheckResult:
     words = params.get("words", ["free", "viagra", "casino"])
     text_lower = text.lower()
     hits = [w for w in words if w in text_lower]
@@ -16,10 +16,10 @@ def check_blacklist_words(text: str, params: Dict[str, Any]) -> CheckResult:
         score=score,
         details={"hits": hits, "count": len(hits), "max_hits": max_hits},
     )
-AVAILABLE_CHECKS["blacklist"] = check_blacklist_words
+AVAILABLE_CHECKS["blacklist"] = blacklist_words_check
 
 
-def check_links(text: str, params: Dict[str, Any]) -> CheckResult:
+def links_сheck(text: str, params: Dict[str, Any]) -> CheckResult:
     import re
 
     urls = re.findall(r"https?://\S+", text)
@@ -33,10 +33,10 @@ def check_links(text: str, params: Dict[str, Any]) -> CheckResult:
         score=score,
         details={"links": urls, "count": len(urls), "max_links": max_links},
     )
-AVAILABLE_CHECKS["links"] = check_links
+AVAILABLE_CHECKS["links"] = links_сheck
 
 
-def check_phone_numbers(text: str, params: Dict[str, Any]) -> CheckResult:
+def phone_numbers_check(text: str, params: Dict[str, Any]) -> CheckResult:
     import re
 
     # Ищем номера в формате +7XXXXXXXXXX
@@ -52,10 +52,10 @@ def check_phone_numbers(text: str, params: Dict[str, Any]) -> CheckResult:
         score=score,
         details={"phones": phones}
     )
-AVAILABLE_CHECKS["phone"] = check_phone_numbers
+AVAILABLE_CHECKS["phone"] = phone_numbers_check
 
 
-def check_telegram_nick(text: str, params: Dict[str, Any]) -> CheckResult:
+def telegram_nick_check(text: str, params: Dict[str, Any]) -> CheckResult:
     import re
 
     # Telegram официальный формат имен:
@@ -73,4 +73,38 @@ def check_telegram_nick(text: str, params: Dict[str, Any]) -> CheckResult:
         score=score,
         details={"nicknames": matches}
     )
-AVAILABLE_CHECKS["telegram_nick"] = check_telegram_nick
+AVAILABLE_CHECKS["telegram_nick"] = telegram_nick_check
+
+
+def length_check(text: str, params: Dict[str, Any]) -> CheckResult:
+    min_length = params.get("min_length", 10)
+    max_length = params.get("max_length", 2000)
+
+    length = len(text)
+
+    # Проверяем выход за границы
+    if length < min_length:
+        passed = False
+        # слишком короткое сообщение — считаем высоким риском
+        score = (min_length - length) / min_length
+        score = min(score, 1.0)
+    elif length > max_length:
+        passed = False
+        score = (length - max_length) / max_length
+        score = min(score, 1.0)
+    else:
+        passed = True
+        score = 0.0
+
+    return CheckResult(
+        name="message_length",
+        passed=passed,
+        score=score,
+        details={
+            "length": length,
+            "min_length": min_length,
+            "max_length": max_length
+        }
+    )
+
+AVAILABLE_CHECKS["message_length"] = length_check
