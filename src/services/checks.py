@@ -273,3 +273,10 @@ async def async_external_service_exemple_check(text: str, params: Dict[str, Any]
         )
     
 AVAILABLE_CHECKS["async_exemple"] = async_external_service_exemple_check
+
+
+from .lib.external_services import AsyncExternalServiceExampleCheck
+checker = AsyncExternalServiceExampleCheck()
+async def async_external_service_exemple_check(text: str, params: Dict[str, Any]) -> CheckResult:
+    return await checker(text, params)
+AVAILABLE_CHECKS["async_external_service"] = async_external_service_exemple_check
