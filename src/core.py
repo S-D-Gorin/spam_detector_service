@@ -1,35 +1,47 @@
+import asyncio
 from typing import List
+from fastapi.concurrency import run_in_threadpool
+
 from .schemas import SpamRequest, SpamResponse, CheckResult
 from .services.checks import AVAILABLE_CHECKS
-import logging
+
 
 class SpamDetector:
     def __init__(self):
-        # сюда можно передать конфиги, ресурсы и т.п.
         pass
 
-    def run(self, req: SpamRequest) -> SpamResponse:
-        results: List[CheckResult] = []
+    async def run(self, req: SpamRequest) -> SpamResponse:
+        tasks = []
 
         for check_name in req.checks:
             check_func = AVAILABLE_CHECKS.get(check_name)
             if not check_func:
-                logging.warning(f"Unknown check: {check_name}")
                 continue
-            
-            # параметры для проверки (если есть)
+
             params = {}
             if req.options and check_name in req.options:
                 params = req.options[check_name].params
 
-            result = check_func(
-                text=req.text,
-                recipients=req.recipients,
-                params=params,
-            )
-            results.append(result)
+            # если функция асинхронная — ждём её напрямую
+            if asyncio.iscoroutinefunction(check_func):
+                tasks.append(
+                    check_func(
+                        text=req.text,
+                        params=params,
+                    )
+                )
+            else:
+                # синхронные проверки гоняем в threadpool, чтобы не блокировали event loop
+                tasks.append(
+                    run_in_threadpool(
+                        check_func,
+                        req.text,
+                        params,
+                    )
+                )
 
-        # агрегируем результат
+        results: List[CheckResult] = await asyncio.gather(*tasks)
+
         if results:
             avg_score = sum(r.score for r in results) / len(results)
         else:

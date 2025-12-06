@@ -84,7 +84,6 @@ docker compose up --build
 ```json
 {
   "text": "FREE viagra here! https://spammy.com",
-  "recipients": ["user@example.com"],
   "checks": ["blacklist", "links", "phone"],
   "options": {
     "blacklist": {
@@ -199,7 +198,7 @@ check_phone_numbers()
 Создать функцию в `src/services/checks.py`:
 
 ```python
-def check_new_rule(text, recipients, params):
+def check_new_rule(text, params):
     return CheckResult(
         name="new_rule",
         passed=True/False,
