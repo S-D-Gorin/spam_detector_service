@@ -241,6 +241,7 @@ async def async_external_service_exemple_check(text: str, params: Dict[str, Any]
             "request": payload,
             "error": str(exc),
         }
+        error_details["timeout"] = timeout
 
         if isinstance(exc, httpx.ConnectTimeout):
             error_details["type"] = "connection_timeout"
