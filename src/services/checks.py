@@ -55,3 +55,22 @@ def check_phone_numbers(text: str, recipients: List[str], params: Dict[str, Any]
 AVAILABLE_CHECKS["phone"] = check_phone_numbers
 
 
+def check_telegram_nick(text: str, recipients: List[str], params: Dict[str, Any]) -> CheckResult:
+    import re
+
+    # Telegram официальный формат имен:
+    # длина никнейма: 5–32 символов; допустимы буквы, цифры и _
+    pattern = r"@[A-Za-z0-9_]{5,32}"
+
+    matches = re.findall(pattern, text)
+
+    passed = len(matches) > 0
+    score = 1.0 if matches else 0.0
+
+    return CheckResult(
+        name="telegram_nick",
+        passed=passed,
+        score=score,
+        details={"nicknames": matches}
+    )
+AVAILABLE_CHECKS["telegram_nick"] = check_telegram_nick
