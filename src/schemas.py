@@ -10,7 +10,6 @@ class CheckParams(BaseModel):
 
 class SpamRequest(BaseModel):
     text: str
-    recipients: List[str]
     checks: List[str]  # ["blacklist", "links", "caps"]
     options: Optional[Dict[str, CheckParams]] = None
 

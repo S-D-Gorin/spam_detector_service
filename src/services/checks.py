@@ -3,7 +3,7 @@ from ..schemas import CheckResult
 
 AVAILABLE_CHECKS = {}
 
-def check_blacklist_words(text: str, recipients: List[str], params: Dict[str, Any]) -> CheckResult:
+def check_blacklist_words(text: str, params: Dict[str, Any]) -> CheckResult:
     words = params.get("words", ["free", "viagra", "casino"])
     text_lower = text.lower()
     hits = [w for w in words if w in text_lower]
@@ -19,7 +19,7 @@ def check_blacklist_words(text: str, recipients: List[str], params: Dict[str, An
 AVAILABLE_CHECKS["blacklist"] = check_blacklist_words
 
 
-def check_links(text: str, recipients: List[str], params: Dict[str, Any]) -> CheckResult:
+def check_links(text: str, params: Dict[str, Any]) -> CheckResult:
     import re
 
     urls = re.findall(r"https?://\S+", text)
@@ -36,7 +36,7 @@ def check_links(text: str, recipients: List[str], params: Dict[str, Any]) -> Che
 AVAILABLE_CHECKS["links"] = check_links
 
 
-def check_phone_numbers(text: str, recipients: List[str], params: Dict[str, Any]) -> CheckResult:
+def check_phone_numbers(text: str, params: Dict[str, Any]) -> CheckResult:
     import re
 
     # Ищем номера в формате +7XXXXXXXXXX
@@ -55,7 +55,7 @@ def check_phone_numbers(text: str, recipients: List[str], params: Dict[str, Any]
 AVAILABLE_CHECKS["phone"] = check_phone_numbers
 
 
-def check_telegram_nick(text: str, recipients: List[str], params: Dict[str, Any]) -> CheckResult:
+def check_telegram_nick(text: str, params: Dict[str, Any]) -> CheckResult:
     import re
 
     # Telegram официальный формат имен:

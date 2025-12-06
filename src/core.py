@@ -24,7 +24,6 @@ class SpamDetector:
 
             result = check_func(
                 text=req.text,
-                recipients=req.recipients,
                 params=params,
             )
             results.append(result)
