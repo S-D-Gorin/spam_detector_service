@@ -262,6 +262,7 @@ async def async_external_service_exemple_check(text: str, params: Dict[str, Any]
         details = {
             "url": url,
             "request": payload,
+            "timeout": timeout,
             "error": f"Unexpected error: {exc}",
         }
         return CheckResult(
