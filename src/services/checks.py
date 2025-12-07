@@ -135,6 +135,49 @@ def check_email_addresses(text: str, params: Dict[str, Any]) -> CheckResult:
 AVAILABLE_CHECKS["email_addresses"] = check_email_addresses
 
 
+def emoji_check(text: str, params: Dict[str, Any]) -> CheckResult:
+    import re
+
+    max_emoji = params.get("max_emoji", 10)
+
+    # Простая регулярка для поиска эмодзи
+    emoji_pattern = re.compile(
+        "["
+        "\U0001F600-\U0001F64F"  # emoticons
+        "\U0001F300-\U0001F5FF"  # symbols & pictographs
+        "\U0001F680-\U0001F6FF"  # transport & map symbols
+        "\U0001F1E0-\U0001F1FF"  # flags (iOS)
+        "]+",
+        flags=re.UNICODE,
+    )
+
+    emojis = emoji_pattern.findall(text)
+    all_emojis = []
+    for e in emojis:
+        all_emojis.extend(list(e))
+            
+
+    passed = len(all_emojis) > max_emoji
+    score = 1.0 if passed else 0.0
+
+    emoji_real_count= lambda em_list: sum(len(em) for em in em_list)
+    score = min(emoji_real_count(emojis) / max_emoji, 1.0)
+
+    details = {
+        "max_emoji": max_emoji,
+        "emoji_count": emoji_real_count(emojis),
+        "emojis": emojis
+        }
+
+    return CheckResult(
+        name="emoji_check",
+        passed=passed,
+        score=score,
+        details=details
+    )
+AVAILABLE_CHECKS["emoji_check"] = emoji_check
+
+
 # Пример асинхронной проверки, которая обращается к внешнему сервису
 async def async_external_service_exemple_check(text: str, params: Dict[str, Any]) -> CheckResult:
     """
