@@ -1,5 +1,6 @@
 from typing import Dict, Any, List
 from ..schemas import CheckResult
+from .lib.phone_check_service import PhoneService
 import httpx
 import os
 import logging
@@ -42,11 +43,10 @@ AVAILABLE_CHECKS["links"] = links_сheck
 
 
 def phone_numbers_check(text: str, params: Dict[str, Any]) -> CheckResult:
-    import re
+    phone_service = PhoneService(text, params)
+    country = params.get('country', None)
+    phones = phone_service.analyze()
 
-    # Ищем номера в формате +7XXXXXXXXXX
-    pattern = r"\+7\d{10}"
-    phones = re.findall(pattern, text)
 
     passed = len(phones) > 0
     score = 1.0 if phones else 0.0  # можно сделать гибче
