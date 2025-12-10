@@ -1,7 +1,7 @@
 import re
 
 RU_PHONE_PATTERN = re.compile(
-    r"(?:\+7|8)\s?(?:\(?\d{3}\)?|\d{3})[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}"
+    r"(?:\+7|8|7)\s?(?:\(?\d{3}\)?|\d{3})[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}"
 )
 
 KZ_PHONE_PATTERN = re.compile(
