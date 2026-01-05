@@ -18,7 +18,7 @@ def blacklist_words_check(text: str, params: Dict[str, Any]) -> CheckResult:
 
     return CheckResult(
         name="blacklist",
-        passed=len(hits) == 0,
+        passed=len(hits) > 0,
         score=score,
         details={"hits": hits, "count": len(hits), "max_hits": max_hits},
     )
@@ -94,11 +94,12 @@ def length_check(text: str, params: Dict[str, Any]) -> CheckResult:
         score = (min_length - length) / min_length
         score = min(score, 1.0)
     elif length > max_length:
-        passed = False
+        # слишком длинное сообщение
+        passed = True
         score = (length - max_length) / max_length
         score = min(score, 1.0)
     else:
-        passed = True
+        passed = False
         score = 0.0
 
     return CheckResult(
@@ -156,8 +157,13 @@ def emoji_check(text: str, params: Dict[str, Any]) -> CheckResult:
     for e in emojis:
         all_emojis.extend(list(e))
             
+    # если эмодзи найдены
+    if len(all_emojis) > 0:
+        passed = True
+    else:
+        passed = False
 
-    passed = len(all_emojis) > max_emoji
+    passed = passed
     score = 1.0 if passed else 0.0
 
     emoji_real_count= lambda em_list: sum(len(em) for em in em_list)
