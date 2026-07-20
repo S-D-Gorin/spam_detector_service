@@ -4,30 +4,25 @@ RU_PHONE_PATTERN = re.compile(
     r"(?:\+7|8|7)\s?(?:\(?\d{3}\)?|\d{3})[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}"
 )
 
-KZ_PHONE_PATTERN = re.compile(
-    r"\+7\s?(?:\(7\d{2}\)|7\d{2})[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}"
-)
+KZ_PHONE_PATTERN = re.compile(r"\+7\s?(?:\(7\d{2}\)|7\d{2})[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}")
 
-UZ_PHONE_PATTERN = re.compile(
-    r"\+998\s?(?:\(?\d{2}\)?|\d{2})[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}"
-)
+UZ_PHONE_PATTERN = re.compile(r"\+998\s?(?:\(?\d{2}\)?|\d{2})[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}")
 
-BL_PHONE_PATTERN = re.compile(
-    r"\+375\s?(?:\(?\d{2}\)?|\d{2})[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}"
-)
+BL_PHONE_PATTERN = re.compile(r"\+375\s?(?:\(?\d{2}\)?|\d{2})[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}")
 
 country_phone_patterns = {
-    'ru': RU_PHONE_PATTERN,
-    'kz': KZ_PHONE_PATTERN,
-    'uz': UZ_PHONE_PATTERN,
-    'bl': BL_PHONE_PATTERN,
+    "ru": RU_PHONE_PATTERN,
+    "kz": KZ_PHONE_PATTERN,
+    "uz": UZ_PHONE_PATTERN,
+    "bl": BL_PHONE_PATTERN,
 }
+
 
 class PhoneService:
     def __init__(self, text, params):
         self.text = text
         # self.params = params
-        self.country = params.get('country', 'ru')
+        self.country = params.get("country", "ru")
 
     # -----------------------------------------------------------
     def get_phones_from_text_by_country(self, country=None):
@@ -43,12 +38,11 @@ class PhoneService:
             return re.findall(pattern, self.text)
 
         # Если страна не указана → ищем по всем паттернам
-        for c, pattern in country_phone_patterns.items():
+        for pattern in country_phone_patterns.values():
             matches = re.findall(pattern, self.text)
             phones.extend(matches)
 
         return phones
-
 
     # -----------------------------------------------------------
     @staticmethod
@@ -91,21 +85,17 @@ class PhoneService:
             return True
 
         # Определяем страну
-        country = None
         local_part = None
 
         if len(digits) == 11 and digits[0] in ("7", "8"):
             if digits[0] == "8":
                 digits = "7" + digits[1:]
-            country = "ru_kz"
             local_part = digits[1:]
 
         elif len(digits) == 12 and digits.startswith("998"):
-            country = "uz"
             local_part = digits[3:]
 
         elif len(digits) == 12 and digits.startswith("375"):
-            country = "by"
             local_part = digits[3:]
 
         else:

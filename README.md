@@ -1,246 +1,118 @@
-# **Spam Detector Service**
+# Spam Detector Service
 
-## 🧩 Описание проекта
+Stateless FastAPI service for detecting signals and extracting normalized entities from text.
+Version **0.2.0** introduces a neutral detection contract. It does not decide whether a message
+is spam or whether a chat policy passed.
 
-**Spam Detector Service** — это лёгкий и расширяемый микросервис для анализа текстовых сообщений.
-Он принимает текст и набор проверок, которые нужно выполнить. Возвращает структурированный ответ с результатами.
+## Responsibility boundary
 
-Сервис реализован на **FastAPI**, рработает из коробки с помощью **Docker**, поддерживает добавление новых проверок и конфигурацию через YAML.
+Spam Detector:
 
----
+- detects matches and entities;
+- extracts links and phone numbers;
+- normalizes and deduplicates results.
 
-# 📌 Возможности
+Sprotect:
 
-* Выполнение произвольного набора проверок по запросу
-* Масштабируемый набор правил (blacklist, ссылки, телефоны и др.)
-* Удобный Swagger UI (`/docs`)
-* Быстрый запуск через Docker Compose
-* Healthcheck для мониторинга состояния
-* Конфигурируемые параметры проверок
+- stores immutable chat configuration;
+- applies `min_count`/`max_count` and other policies;
+- decides whether policy passed and produces a moderation decision;
+- performs Telegram actions.
 
----
+For example, the same detection `phone count=1` can mean that Chat A's `min_count=1` policy
+passed, Chat B's `max_count=0` policy failed, or Chat C has no phone policy and merely consumes
+the detection. That interpretation never belongs in this service.
 
-# 📁 Структура проекта
+## API v2
 
-```
-spam_detector_service/
-├── Dockerfile
-├── README.md
-├── config.yaml
-├── docker-compose.yml
-├── requirements.txt
-└── src
-    ├── __init__.py
-    ├── api.py
-    ├── config.ini
-    ├── core.py
-    ├── main.py
-    ├── schemas.py
-    ├── services
-    │   ├── __init__.py
-    │   ├── checks.py
-    │   └── lib
-    │       └── __init__.py
-    └── utills
-        └── __init__.py
-```
+`POST /api/v2/check` detects only the requested detector names. Unknown fields and duplicate
+detectors are rejected with HTTP 422. `/api/check` remains available as deprecated v1 and keeps
+its legacy behavior; new integrations must not use it.
 
----
-
-# ⚙️ Установка и запуск
-
-## 🔧 Локальный запуск без Docker
-
-```bash
-pip install -r requirements.txt
-uvicorn src.main:app --reload
-```
-
-Swagger UI:
-👉 [http://localhost:8000/docs](http://localhost:8000/docs)
-
----
-
-## 🐳 Запуск через Docker Compose
-
-```bash
-docker compose up --build
-```
-
-Если всё успешно — сервис будет доступен на:
-
-* API: [http://localhost:8000](http://localhost:8000)
-* Swagger: [http://localhost:8000/docs](http://localhost:8000/docs)
-* Healthcheck: [http://localhost:8000/health](http://localhost:8000/health)
-
----
-
-# 🔌 API
-
-## **POST** `/api/check`
-
-Запрос:
+Request:
 
 ```json
 {
-  "text": "FREE viagra here! https://spammy.com",
-  "checks": ["blacklist", "links", "phone"],
+  "text": "sprotect_demo_token https://example.invalid/test +7 (000) 123-45-67",
+  "detectors": ["blacklist", "links", "phone"],
   "options": {
-    "blacklist": {
-      "params": {
-        "words": ["free", "viagra", "casino"]
-      }
-    }
+    "blacklist": {"words": ["sprotect_demo_token"]},
+    "links": {},
+    "phone": {}
   }
 }
 ```
 
-Ответ:
+Response:
 
 ```json
 {
-  "is_spam": true,
-  "score": 0.5,
+  "has_signals": true,
+  "signal_count": 3,
   "results": [
     {
       "name": "blacklist",
-      "passed": false,
-      "score": 0.66,
-      "details": {
-        "hits": ["free", "viagra"]
-      }
+      "detected": true,
+      "confidence": 1.0,
+      "count": 1,
+      "details": {"hits": ["sprotect_demo_token"], "occurrences_count": 1}
     },
     {
       "name": "links",
-      "passed": true,
-      "score": 0.33,
-      "details": {
-        "links": ["https://spammy.com"],
-        "count": 1,
-        "max_links": 3
-      }
+      "detected": true,
+      "confidence": 1.0,
+      "count": 1,
+      "details": {"links": ["https://example.invalid/test"]}
     },
     {
       "name": "phone",
-      "passed": false,
-      "score": 1.0,
-      "details": {
-        "phones": ["+79991234567"]
-      }
+      "detected": true,
+      "confidence": 1.0,
+      "count": 1,
+      "details": {"phones": ["+70001234567"]}
     }
   ]
 }
 ```
 
----
+`detected` is exactly `count > 0`. `has_signals` only means that something was found; it does
+not mean spam. Deterministic detectors report confidence `1.0` for both positive and negative
+results because it describes confidence in the result, not severity.
 
-# 🧠 Логика обработки
+### Detector contracts
 
-## Схема работы:
+- `blacklist`: requires 1–1000 words of at most 128 characters. Text and words use Unicode NFKC
+  normalization and case folding, then substring matching. `hits` contains unique normalized
+  words in request order; `count` is unique hits and `occurrences_count` counts all non-overlapping
+  occurrences.
+- `links`: accepts no options and extracts `http`/`https` URLs. Unique links retain first text
+  appearance. It does not accept legacy `max_links`.
+- `phone`: accepts no options. It recognizes RU/KZ (`+7`, `7`, or local `8`), Uzbekistan `+998`,
+  and Belarus `+375` patterns with spaces, parentheses, and hyphens. Results use international
+  digit format, retain first appearance, and are deduplicated. Extensions and unrelated short
+  numbers are not recognized.
 
-1. Клиент отправляет текст и список проверок.
-2. `core.py` вызывает каждую проверку из `services/checks.py`.
-3. Каждая проверка возвращает объект `CheckResult`.
-4. Сервис агрегирует результаты:
+Request limits are 20,000 text characters and three detectors. More than 100 unique extracted
+links or phones returns HTTP 422 with `detection_limit_exceeded`; results are never truncated.
+Invalid request/options return HTTP 422. Unexpected detector failures return HTTP 500; partial
+success is not returned.
 
-   * `is_spam = any(not passed)`
-   * `score = среднее значение score по всем проверкам`
-5. Возвращает `SpamResponse`.
+## Run and verify
 
----
-
-# 🔍 Проверки (rules)
-
-## 1. **Blacklist words**
-
-Ищет запрещённые слова.
-
-```python
-check_blacklist_words()
+```bash
+pip install -r requirements.txt
+uvicorn src.main:app --reload
+pytest
+ruff check .
+ruff format --check .
 ```
 
-Параметры:
+Swagger UI is at `http://localhost:8000/docs`; health is at `/health`.
 
-* `words: List[str]` — список слов
+Docker:
 
----
-
-## 2. **Links check**
-
-Считает количество ссылок в тексте.
-
-```python
-check_links()
+```bash
+docker compose up --build
 ```
 
-Параметры:
-
-* `max_links: int`
-
----
-
-## 3. **Phone numbers check**
-
-Ищет телефоны формата `+7XXXXXXXXXX`.
-
-```python
-check_phone_numbers()
-```
-
-Параметры:
-
-* (нет)
-
----
-
-# 🧩 Как добавить новую проверку
-
-Создать функцию в `src/services/checks.py`:
-
-```python
-def check_new_rule(text, params):
-    return CheckResult(
-        name="new_rule",
-        passed=True/False,
-        score=0–1,
-        details={...}
-    )
-```
-
-Зарегистрировать её:
-
-```python
-AVAILABLE_CHECKS["new_rule"] = check_new_rule
-```
-
-Теперь она доступна из API.
-
----
-
-# 🛠 Конфиг (`config.yaml`)
-
-Пример:
-
-```yaml
-checks:
-  blacklist:
-    words: ["free", "viagra"]
-  links:
-    max_links: 3
-```
-
-Сервис может загружать конфигурацию при старте (опционально).
-
----
-
-# 💡 Архитектурные особенности
-
-* полностью модульный дизайн
-* лёгкое расширение через добавление проверок
-* никакой привязки к БД (при необходимости легко добавить)
-* можно подключить ML-модель для скоринга
-
----
-
-# 🤝 Контакты / поддержка
-[Telegram](https://t.me/sdg9999)
+The v2 implementation does not log source text, options, extracted entities, or raw responses.
