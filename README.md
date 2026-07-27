@@ -43,6 +43,25 @@ Request:
 }
 ```
 
+Complete v2 request with all currently supported v2 detectors:
+
+```json
+{
+  "text": "sprotect_demo_token https://example.invalid/test +7 (000) 123-45-67",
+  "detectors": ["blacklist", "links", "phone"],
+  "options": {
+    "blacklist": {
+      "words": ["sprotect_demo_token", "casino", "viagra"]
+    },
+    "links": {},
+    "phone": {}
+  }
+}
+```
+
+Only these request fields are accepted by v2. `links` and `phone` accept empty option objects
+only; fields such as `max_links` are rejected.
+
 Response:
 
 ```json
@@ -96,6 +115,72 @@ Request limits are 20,000 text characters and three detectors. More than 100 uni
 links or phones returns HTTP 422 with `detection_limit_exceeded`; results are never truncated.
 Invalid request/options return HTTP 422. Unexpected detector failures return HTTP 500; partial
 success is not returned.
+
+## Deprecated API v1
+
+`POST /api/check` is deprecated, but still supports all registered legacy checks. Its request
+contract is intentionally permissive: `checks` contains check names and `options` is keyed by the
+same names, with each value wrapped in `params`.
+
+Complete legacy v1 request covering all currently registered checks:
+
+```json
+{
+  "text": "free casino https://example.invalid/test +7 (000) 123-45-67 @support_user user@example.com 😀😀😀",
+  "checks": [
+    "blacklist",
+    "links",
+    "phone",
+    "telegram_nick",
+    "message_length",
+    "email_addresses",
+    "emoji_check",
+    "async_exemple"
+  ],
+  "options": {
+    "blacklist": {
+      "params": {
+        "words": ["free", "viagra", "casino"],
+        "max_hits": 3
+      }
+    },
+    "links": {
+      "params": {
+        "max_links": 3
+      }
+    },
+    "phone": {
+      "params": {}
+    },
+    "telegram_nick": {
+      "params": {}
+    },
+    "message_length": {
+      "params": {
+        "min_length": 10,
+        "max_length": 2000
+      }
+    },
+    "email_addresses": {
+      "params": {}
+    },
+    "emoji_check": {
+      "params": {
+        "max_emoji": 10
+      }
+    },
+    "async_exemple": {
+      "params": {
+        "url": "https://example.com/api",
+        "api_key": "",
+        "timeout": 2.0,
+        "fail_on_error": false,
+        "payload": {}
+      }
+    }
+  }
+}
+```
 
 ## Run and verify
 
