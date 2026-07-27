@@ -188,11 +188,206 @@
 - При обнаружении более 100 уникальных номеров возвращается HTTP 422; список
   не обрезается.
 
+## `telegram_nick`
+
+**Что делает.** Извлекает Telegram-имена пользователей.
+
+**Пример запроса.**
+
+```json
+{
+  "text": "Напишите @support_user или @sales_team.",
+  "detectors": ["telegram_nick"]
+}
+```
+
+**Пример ответа.**
+
+```json
+{
+  "has_signals": true,
+  "signal_count": 2,
+  "results": [
+    {
+      "name": "telegram_nick",
+      "detected": true,
+      "confidence": 1.0,
+      "count": 2,
+      "details": {"nicknames": ["@support_user", "@sales_team"]}
+    }
+  ]
+}
+```
+
+**Особенности.** Параметры не поддерживаются. Ник должен начинаться с `@` и
+состоять из 5–32 букв ASCII, цифр или символов `_`. Повторы сохраняются.
+
+## `message_length`
+
+**Что делает.** Сигнализирует, что длина сообщения находится вне заданного
+диапазона.
+
+**Пример запроса.**
+
+```json
+{
+  "text": "Коротко",
+  "detectors": ["message_length"],
+  "options": {"message_length": {"min_length": 10, "max_length": 2000}}
+}
+```
+
+**Пример ответа.**
+
+```json
+{
+  "has_signals": true,
+  "signal_count": 1,
+  "results": [
+    {
+      "name": "message_length",
+      "detected": true,
+      "confidence": 1.0,
+      "count": 1,
+      "details": {"length": 7, "min_length": 10, "max_length": 2000}
+    }
+  ]
+}
+```
+
+**Особенности.** Параметры необязательны; по умолчанию используются
+`min_length: 10` и `max_length: 2000`. `count` равен 1, только если длина
+меньше `min_length` или больше `max_length`; иначе равен 0. Значение
+`min_length` не может быть больше `max_length`.
+
+## `email_addresses`
+
+**Что делает.** Извлекает адреса электронной почты по простому шаблону.
+
+**Пример запроса.**
+
+```json
+{
+  "text": "Контакт: sales@example.org",
+  "detectors": ["email_addresses"]
+}
+```
+
+**Пример ответа.**
+
+```json
+{
+  "has_signals": true,
+  "signal_count": 1,
+  "results": [
+    {
+      "name": "email_addresses",
+      "detected": true,
+      "confidence": 1.0,
+      "count": 1,
+      "details": {"emails": ["sales@example.org"]}
+    }
+  ]
+}
+```
+
+**Особенности.** Параметры не поддерживаются. Детектор выполняет только
+синтаксическое извлечение и не подтверждает, что почтовый ящик существует.
+
+## `emoji_check`
+
+**Что делает.** Извлекает эмодзи из поддерживаемых Unicode-диапазонов.
+
+**Пример запроса.**
+
+```json
+{
+  "text": "Скидка 😀😀",
+  "detectors": ["emoji_check"],
+  "options": {"emoji_check": {"max_emoji": 10}}
+}
+```
+
+**Пример ответа.**
+
+```json
+{
+  "has_signals": true,
+  "signal_count": 2,
+  "results": [
+    {
+      "name": "emoji_check",
+      "detected": true,
+      "confidence": 1.0,
+      "count": 2,
+      "details": {"max_emoji": 10, "emoji_count": 2, "emojis": ["😀😀"]}
+    }
+  ]
+}
+```
+
+**Особенности.** `max_emoji` необязателен и по умолчанию равен 10; он
+возвращается для совместимости с настройками v1, но не ограничивает и не
+фильтрует результат v2. `count` и `emoji_count` содержат число кодовых точек
+в найденных группах эмодзи.
+
+## `async_exemple`
+
+**Что делает.** Передаёт текст внешнему HTTP-сервису и преобразует его поле
+`passed` в сигнал: `true` означает обнаруженный сигнал, `false` — отсутствие
+сигнала.
+
+**Пример запроса.**
+
+```json
+{
+  "text": "Сообщение для внешней проверки",
+  "detectors": ["async_exemple"],
+  "options": {
+    "async_exemple": {
+      "url": "https://detector.example/check",
+      "timeout": 2.0,
+      "payload": {"source": "chat"}
+    }
+  }
+}
+```
+
+**Пример ответа внешнего сервиса.**
+
+```json
+{"passed": true, "score": 0.8}
+```
+
+**Пример ответа `/api/v2/check`.**
+
+```json
+{
+  "has_signals": true,
+  "signal_count": 1,
+  "results": [
+    {
+      "name": "async_exemple",
+      "detected": true,
+      "confidence": 1.0,
+      "count": 1,
+      "details": {"url": "https://detector.example/check", "status_code": 200}
+    }
+  ]
+}
+```
+
+**Особенности.** Поддерживаются `url`, `api_key`, `timeout` (более 0 и до 60 с),
+`fail_on_error` и объект `payload`; текст всегда записывается в поле `text`
+исходящего JSON. При ошибке сети, не-200 ответе или некорректном JSON сигнал
+отсутствует, если не задано `fail_on_error: true`. В ответ v2 не передаются
+API-ключ, отправленный текст, payload и тело внешнего ответа.
+
 ## Ограничения и ошибки валидации
 
 - `text` — строка не длиннее 20 000 символов.
-- В `detectors` должен быть хотя бы один из трёх допустимых детекторов;
-  повторения запрещены. Максимум — три детектора.
+- В `detectors` должен быть хотя бы один из восьми допустимых детекторов;
+  повторения запрещены. Максимум — восемь детекторов.
 - Неизвестные поля и параметры, опции для незапрошенного детектора, а также
   отсутствие `blacklist.words` для детектора `blacklist` приводят к HTTP 422.
 - При превышении лимита сущностей ответ имеет HTTP 422 и тело вида:

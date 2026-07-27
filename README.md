@@ -47,20 +47,28 @@ Complete v2 request with all currently supported v2 detectors:
 
 ```json
 {
-  "text": "sprotect_demo_token https://example.invalid/test +7 (000) 123-45-67",
-  "detectors": ["blacklist", "links", "phone"],
+  "text": "sprotect_demo_token https://example.invalid/test +7 (000) 123-45-67 @support_user user@example.org 😀",
+  "detectors": [
+    "blacklist", "links", "phone", "telegram_nick", "message_length",
+    "email_addresses", "emoji_check", "async_exemple"
+  ],
   "options": {
     "blacklist": {
       "words": ["sprotect_demo_token", "casino", "viagra"]
     },
     "links": {},
-    "phone": {}
+    "phone": {},
+    "telegram_nick": {},
+    "message_length": {"min_length": 10, "max_length": 2000},
+    "email_addresses": {},
+    "emoji_check": {"max_emoji": 10},
+    "async_exemple": {"url": "https://detector.example/check", "timeout": 2.0}
   }
 }
 ```
 
-Only these request fields are accepted by v2. `links` and `phone` accept empty option objects
-only; fields such as `max_links` are rejected.
+Only these request fields are accepted by v2. `links`, `phone`, `telegram_nick`, and
+`email_addresses` accept empty option objects only; fields such as `max_links` are rejected.
 
 Response:
 
@@ -110,11 +118,24 @@ results because it describes confidence in the result, not severity.
   and Belarus `+375` patterns with spaces, parentheses, and hyphens. Results use international
   digit format, retain first appearance, and are deduplicated. Extensions and unrelated short
   numbers are not recognized.
+- `telegram_nick`: accepts no options and extracts `@` usernames that contain 5–32 ASCII letters,
+  digits, or underscores.
+- `message_length`: reports one signal when text length falls outside the configurable
+  `min_length`/`max_length` range (10–2000 by default).
+- `email_addresses`: accepts no options and extracts syntactically matching email addresses.
+- `emoji_check`: extracts emoji code points from supported Unicode ranges; `max_emoji` is kept in
+  result details for compatibility with v1 and does not filter v2 results.
+- `async_exemple`: posts text to a configurable external service and treats its boolean `passed`
+  response field as a signal. Network and response failures become signals only when
+  `fail_on_error` is true.
 
-Request limits are 20,000 text characters and three detectors. More than 100 unique extracted
+Request limits are 20,000 text characters and eight detectors. More than 100 unique extracted
 links or phones returns HTTP 422 with `detection_limit_exceeded`; results are never truncated.
 Invalid request/options return HTTP 422. Unexpected detector failures return HTTP 500; partial
 success is not returned.
+
+See [the complete v2 detector reference](docs/00-static-checks.md) for request and response
+examples.
 
 ## Deprecated API v1
 

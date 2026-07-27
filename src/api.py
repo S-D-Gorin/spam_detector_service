@@ -33,7 +33,7 @@ async def check_spam(
 )
 async def check_signals(req: DetectionRequest) -> DetectionResponse:
     try:
-        return run_detection(req)
+        return await run_detection(req)
     except DetectionLimitError as exc:
         raise HTTPException(
             status_code=422,

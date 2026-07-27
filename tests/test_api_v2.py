@@ -56,6 +56,34 @@ def test_absence_of_phone_is_only_an_absent_detection():
     assert response.json()["results"][0]["count"] == 0
 
 
+def test_v2_exposes_all_local_legacy_detectors():
+    response = client.post(
+        "/api/v2/check",
+        json={
+            "text": "@support_user user@example.org 😀😀",
+            "detectors": [
+                "telegram_nick",
+                "message_length",
+                "email_addresses",
+                "emoji_check",
+            ],
+            "options": {
+                "message_length": {"min_length": 100, "max_length": 200},
+                "emoji_check": {"max_emoji": 10},
+            },
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["has_signals"] is True
+    assert body["signal_count"] == 5
+    by_name = {result["name"]: result for result in body["results"]}
+    assert by_name["telegram_nick"]["details"]["nicknames"] == ["@support_user"]
+    assert by_name["message_length"]["details"]["length"] == 33
+    assert by_name["email_addresses"]["details"]["emails"] == ["user@example.org"]
+    assert by_name["emoji_check"]["details"]["emoji_count"] == 2
+
+
 def test_legacy_policy_option_is_validation_error():
     response = client.post(
         "/api/v2/check",

@@ -4,19 +4,33 @@ import re
 import unicodedata
 from collections.abc import Sequence
 
+import httpx
 from pydantic import TypeAdapter
 
 from .schemas import (
+    AsyncExampleDetectionDetails,
+    AsyncExampleDetectorResult,
+    AsyncExampleOptions,
     BlacklistDetectionDetails,
     BlacklistDetectorResult,
     DetectionRequest,
     DetectionResponse,
     DetectorName,
     DetectorResult,
+    EmailAddressesDetectionDetails,
+    EmailAddressesDetectorResult,
+    EmojiDetectionDetails,
+    EmojiDetectorResult,
+    EmojiOptions,
     LinksDetectionDetails,
     LinksDetectorResult,
+    MessageLengthDetectionDetails,
+    MessageLengthDetectorResult,
+    MessageLengthOptions,
     PhoneDetectionDetails,
     PhoneDetectorResult,
+    TelegramNickDetectionDetails,
+    TelegramNickDetectorResult,
 )
 from .services.lib.phone_check_service import PhoneService, country_phone_patterns
 
@@ -24,6 +38,16 @@ MAX_EXTRACTED_LINKS = 100
 MAX_EXTRACTED_PHONES = 100
 URL_PATTERN = re.compile(r"https?://[^\s<>]+", re.IGNORECASE)
 TRAILING_URL_PUNCTUATION = ".,;:!?)]}"
+TELEGRAM_NICK_PATTERN = re.compile(r"@[A-Za-z0-9_]{5,32}")
+EMAIL_PATTERN = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
+EMOJI_PATTERN = re.compile(
+    "["
+    "\U0001f600-\U0001f64f"
+    "\U0001f300-\U0001f5ff"
+    "\U0001f680-\U0001f6ff"
+    "\U0001f1e0-\U0001f1ff"
+    "]+"
+)
 RESULT_ADAPTER = TypeAdapter(DetectorResult)
 
 
@@ -88,6 +112,113 @@ def detect_phones(text: str) -> PhoneDetectorResult:
     )
 
 
+def detect_telegram_nicks(text: str) -> TelegramNickDetectorResult:
+    nicknames = TELEGRAM_NICK_PATTERN.findall(text)
+    return TelegramNickDetectorResult(
+        name="telegram_nick",
+        detected=bool(nicknames),
+        confidence=1.0,
+        count=len(nicknames),
+        details=TelegramNickDetectionDetails(nicknames=nicknames),
+    )
+
+
+def detect_message_length(
+    text: str, min_length: int, max_length: int
+) -> MessageLengthDetectorResult:
+    length = len(text)
+    outside_range = length < min_length or length > max_length
+    return MessageLengthDetectorResult(
+        name="message_length",
+        detected=outside_range,
+        confidence=1.0,
+        count=int(outside_range),
+        details=MessageLengthDetectionDetails(
+            length=length, min_length=min_length, max_length=max_length
+        ),
+    )
+
+
+def detect_email_addresses(text: str) -> EmailAddressesDetectorResult:
+    emails = EMAIL_PATTERN.findall(text)
+    return EmailAddressesDetectorResult(
+        name="email_addresses",
+        detected=bool(emails),
+        confidence=1.0,
+        count=len(emails),
+        details=EmailAddressesDetectionDetails(emails=emails),
+    )
+
+
+def detect_emojis(text: str, max_emoji: int) -> EmojiDetectorResult:
+    emoji_groups = EMOJI_PATTERN.findall(text)
+    emoji_count = sum(len(group) for group in emoji_groups)
+    return EmojiDetectorResult(
+        name="emoji_check",
+        detected=bool(emoji_count),
+        confidence=1.0,
+        count=emoji_count,
+        details=EmojiDetectionDetails(
+            max_emoji=max_emoji, emoji_count=emoji_count, emojis=emoji_groups
+        ),
+    )
+
+
+async def detect_async_example(
+    text: str,
+    url: str,
+    api_key: str,
+    timeout: float,
+    fail_on_error: bool,
+    payload: dict,
+) -> AsyncExampleDetectorResult:
+    request_payload = {**payload, "text": text}
+    headers = {"Content-Type": "application/json", "User-Agent": "SpamDetector/2.0"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(url, json=request_payload, headers=headers)
+        if response.status_code == 200:
+            try:
+                detected = bool(response.json().get("passed", True))
+            except ValueError:
+                detected = fail_on_error
+                return AsyncExampleDetectorResult(
+                    name="async_exemple",
+                    detected=detected,
+                    confidence=1.0,
+                    count=int(detected),
+                    details=AsyncExampleDetectionDetails(
+                        url=url,
+                        status_code=response.status_code,
+                        error="Invalid JSON in response",
+                    ),
+                )
+        else:
+            detected = fail_on_error
+        return AsyncExampleDetectorResult(
+            name="async_exemple",
+            detected=detected,
+            confidence=1.0,
+            count=int(detected),
+            details=AsyncExampleDetectionDetails(
+                url=url,
+                status_code=response.status_code,
+                error=None if response.status_code == 200 else f"HTTP {response.status_code}",
+            ),
+        )
+    except httpx.RequestError as exc:
+        detected = fail_on_error
+        return AsyncExampleDetectorResult(
+            name="async_exemple",
+            detected=detected,
+            confidence=1.0,
+            count=int(detected),
+            details=AsyncExampleDetectionDetails(url=url, error=str(exc)),
+        )
+
+
 def build_detection_response(
     requested_detectors: Sequence[DetectorName],
     results: Sequence[DetectorResult],
@@ -115,7 +246,7 @@ def build_detection_response(
     )
 
 
-def run_detection(request: DetectionRequest) -> DetectionResponse:
+async def run_detection(request: DetectionRequest) -> DetectionResponse:
     results: list[DetectorResult] = []
     for name in request.detectors:
         if name == "blacklist":
@@ -125,4 +256,32 @@ def run_detection(request: DetectionRequest) -> DetectionResponse:
             results.append(detect_links(request.text))
         elif name == "phone":
             results.append(detect_phones(request.text))
+        elif name == "telegram_nick":
+            results.append(detect_telegram_nicks(request.text))
+        elif name == "message_length":
+            options = request.options.message_length or MessageLengthOptions()
+            results.append(
+                detect_message_length(
+                    request.text,
+                    options.min_length,
+                    options.max_length,
+                )
+            )
+        elif name == "email_addresses":
+            results.append(detect_email_addresses(request.text))
+        elif name == "emoji_check":
+            options = request.options.emoji_check or EmojiOptions()
+            results.append(detect_emojis(request.text, options.max_emoji))
+        elif name == "async_exemple":
+            options = request.options.async_exemple or AsyncExampleOptions()
+            results.append(
+                await detect_async_example(
+                    request.text,
+                    options.url,
+                    options.api_key,
+                    options.timeout,
+                    options.fail_on_error,
+                    options.payload,
+                )
+            )
     return build_detection_response(request.detectors, results)
