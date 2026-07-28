@@ -5,6 +5,7 @@ from src.detection import (
     build_detection_response,
     detect_blacklist,
     detect_links,
+    detect_message_length,
     detect_phones,
 )
 from src.schemas import (
@@ -61,6 +62,13 @@ def test_phone_does_not_treat_ordinary_number_as_phone():
     result = detect_phones("Order 123456 and room 2026")
     assert not result.detected
     assert result.count == 0
+
+
+def test_message_length_uses_count_for_text_length_not_signal_count():
+    result = detect_message_length("ordinary message", min_length=10, max_length=2000)
+
+    assert not result.detected
+    assert result.count == len("ordinary message")
 
 
 def _blacklist_result(detected=False, count=0):

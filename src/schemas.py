@@ -221,8 +221,13 @@ class TelegramNickDetectorResult(DetectorResultBase):
 
 class MessageLengthDetectorResult(DetectorResultBase):
     name: Literal["message_length"]
-    count: int = Field(ge=0, le=1, description="One when text length is outside the range.")
+    count: int = Field(ge=0, description="Number of characters in the text.")
     details: MessageLengthDetectionDetails
+
+    @model_validator(mode="after")
+    def detected_matches_count(self) -> "MessageLengthDetectorResult":
+        """For this detector, count is text length rather than a signal count."""
+        return self
 
 
 class EmailAddressesDetectorResult(DetectorResultBase):

@@ -132,7 +132,7 @@ def detect_message_length(
         name="message_length",
         detected=outside_range,
         confidence=1.0,
-        count=int(outside_range),
+        count=length,
         details=MessageLengthDetectionDetails(
             length=length, min_length=min_length, max_length=max_length
         ),
@@ -241,7 +241,10 @@ def build_detection_response(
     ordered = [by_name[name] for name in requested_detectors]
     return DetectionResponse(
         has_signals=any(result.detected for result in ordered),
-        signal_count=sum(result.count for result in ordered),
+        signal_count=sum(
+            int(result.detected) if result.name == "message_length" else result.count
+            for result in ordered
+        ),
         results=ordered,
     )
 

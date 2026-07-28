@@ -79,9 +79,32 @@ def test_v2_exposes_all_local_legacy_detectors():
     assert body["signal_count"] == 5
     by_name = {result["name"]: result for result in body["results"]}
     assert by_name["telegram_nick"]["details"]["nicknames"] == ["@support_user"]
+    assert by_name["message_length"]["count"] == 33
     assert by_name["message_length"]["details"]["length"] == 33
     assert by_name["email_addresses"]["details"]["emails"] == ["user@example.org"]
     assert by_name["emoji_check"]["details"]["emoji_count"] == 2
+
+
+def test_message_length_returns_text_length_in_count():
+    response = client.post(
+        "/api/v2/check",
+        json={
+            "text": "Коротко",
+            "detectors": ["message_length"],
+            "options": {"message_length": {"min_length": 10, "max_length": 2000}},
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["has_signals"] is True
+    assert body["signal_count"] == 1
+    assert body["results"][0]["count"] == 7
+    assert body["results"][0]["details"] == {
+        "length": 7,
+        "min_length": 10,
+        "max_length": 2000,
+    }
 
 
 def test_legacy_policy_option_is_validation_error():

@@ -102,9 +102,11 @@ Response:
 }
 ```
 
-`detected` is exactly `count > 0`. `has_signals` only means that something was found; it does
-not mean spam. Deterministic detectors report confidence `1.0` for both positive and negative
-results because it describes confidence in the result, not severity.
+For all detectors except `message_length`, `detected` is exactly `count > 0`. For
+`message_length`, `count` is the text length and `detected` means that length falls outside the
+configured range. `has_signals` only means that something was found; it does not mean spam.
+Deterministic detectors report confidence `1.0` for both positive and negative results because it
+describes confidence in the result, not severity.
 
 ### Detector contracts
 
@@ -120,8 +122,8 @@ results because it describes confidence in the result, not severity.
   numbers are not recognized.
 - `telegram_nick`: accepts no options and extracts `@` usernames that contain 5–32 ASCII letters,
   digits, or underscores.
-- `message_length`: reports one signal when text length falls outside the configurable
-  `min_length`/`max_length` range (10–2000 by default).
+- `message_length`: reports the text length in `count` and one signal when that length falls
+  outside the configurable `min_length`/`max_length` range (10–2000 by default).
 - `email_addresses`: accepts no options and extracts syntactically matching email addresses.
 - `emoji_check`: extracts emoji code points from supported Unicode ranges; `max_emoji` is kept in
   result details for compatibility with v1 and does not filter v2 results.
