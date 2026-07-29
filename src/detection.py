@@ -241,10 +241,7 @@ def build_detection_response(
     ordered = [by_name[name] for name in requested_detectors]
     return DetectionResponse(
         has_signals=any(result.detected for result in ordered),
-        signal_count=sum(
-            int(result.detected) if result.name == "message_length" else result.count
-            for result in ordered
-        ),
+        signal_count=sum(result.detected for result in ordered),
         results=ordered,
     )
 

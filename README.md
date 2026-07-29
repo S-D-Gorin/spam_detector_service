@@ -105,6 +105,8 @@ Response:
 For all detectors except `message_length`, `detected` is exactly `count > 0`. For
 `message_length`, `count` is the text length and `detected` means that length falls outside the
 configured range. `has_signals` only means that something was found; it does not mean spam.
+`signal_count` is the number of results with `detected: true`; use each result's `count` for the
+number of found entities.
 Deterministic detectors report confidence `1.0` for both positive and negative results because it
 describes confidence in the result, not severity.
 

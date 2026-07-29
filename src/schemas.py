@@ -270,5 +270,8 @@ class DetectionResponse(StrictModel):
             "match. This field does not mean that the message is spam."
         )
     )
-    signal_count: int = Field(ge=0)
+    signal_count: int = Field(
+        ge=0,
+        description="Number of detector results where detected is true.",
+    )
     results: List[DetectorResult]

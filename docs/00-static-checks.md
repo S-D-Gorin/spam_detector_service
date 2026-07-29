@@ -25,15 +25,16 @@
 
 ```json
 {
-  "has_signals": true,
-  "signal_count": 3,
+  "has_signals": false,
+  "signal_count": 0,
   "results": []
 }
 ```
 
 - `has_signals` — `true`, если любой запрошенный детектор что-либо нашёл;
-- `signal_count` — сумма найденных сущностей; для `message_length` это 1 при
-  выходе длины за диапазон и 0 в остальных случаях;
+- `signal_count` — количество результатов, у которых `detected` равно `true`;
+  это не сумма найденных сущностей. Для количества сущностей нужно читать
+  `results[*].count`;
 - `results` — результаты в порядке, указанном в `detectors`;
 - у всех результатов, кроме `message_length`, `detected` равно `count > 0`.
   У `message_length` поле `count` содержит длину текста, а `detected` означает
@@ -107,7 +108,7 @@
 ```json
 {
   "has_signals": true,
-  "signal_count": 2,
+  "signal_count": 1,
   "results": [
     {
       "name": "links",
@@ -156,7 +157,7 @@
 ```json
 {
   "has_signals": true,
-  "signal_count": 3,
+  "signal_count": 1,
   "results": [
     {
       "name": "phone",
@@ -208,7 +209,7 @@
 ```json
 {
   "has_signals": true,
-  "signal_count": 2,
+  "signal_count": 1,
   "results": [
     {
       "name": "telegram_nick",
@@ -316,7 +317,7 @@
 ```json
 {
   "has_signals": true,
-  "signal_count": 2,
+  "signal_count": 1,
   "results": [
     {
       "name": "emoji_check",
