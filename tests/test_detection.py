@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from src.detection import (
     build_detection_response,
     detect_blacklist,
+    detect_emojis,
     detect_links,
     detect_message_length,
     detect_phones,
@@ -69,6 +70,35 @@ def test_message_length_uses_count_for_text_length_not_signal_count():
 
     assert not result.detected
     assert result.count == len("ordinary message")
+
+
+@pytest.mark.parametrize(
+    ("text", "expected_emojis"),
+    [
+        ("🫤😐🫣🤔🤗😓😯🙄", ["🫤", "😐", "🫣", "🤔", "🤗", "😓", "😯", "🙄"]),
+        ("😀😃", ["😀", "😃"]),
+        ("✈️", ["✈️"]),
+        ("👍🏽", ["👍🏽"]),
+        ("👩‍💻", ["👩‍💻"]),
+        ("🇷🇺", ["🇷🇺"]),
+        ("1️⃣", ["1️⃣"]),
+        ("ordinary 😀 text 👩‍💻", ["😀", "👩‍💻"]),
+    ],
+)
+def test_emoji_detector_returns_one_entity_per_emoji_grapheme(text, expected_emojis):
+    result = detect_emojis(text, max_emoji=5)
+
+    assert result.detected
+    assert result.count == len(expected_emojis)
+    assert result.details.emoji_count == len(expected_emojis)
+    assert result.details.emojis == expected_emojis
+
+
+def test_emoji_detector_keeps_raw_detection_independent_of_max_emoji():
+    result = detect_emojis("😀" * 5, max_emoji=5)
+
+    assert result.detected
+    assert result.count == 5
 
 
 def _blacklist_result(detected=False, count=0):

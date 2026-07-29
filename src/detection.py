@@ -5,6 +5,7 @@ import unicodedata
 from collections.abc import Sequence
 
 import httpx
+import regex
 from pydantic import TypeAdapter
 
 from .schemas import (
@@ -40,13 +41,9 @@ URL_PATTERN = re.compile(r"https?://[^\s<>]+", re.IGNORECASE)
 TRAILING_URL_PUNCTUATION = ".,;:!?)]}"
 TELEGRAM_NICK_PATTERN = re.compile(r"@[A-Za-z0-9_]{5,32}")
 EMAIL_PATTERN = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
-EMOJI_PATTERN = re.compile(
-    "["
-    "\U0001f600-\U0001f64f"
-    "\U0001f300-\U0001f5ff"
-    "\U0001f680-\U0001f6ff"
-    "\U0001f1e0-\U0001f1ff"
-    "]+"
+GRAPHEME_PATTERN = regex.compile(r"\X")
+EMOJI_GRAPHEME_PATTERN = regex.compile(
+    r"\p{Extended_Pictographic}|\p{Regional_Indicator}|[0-9#*]\uFE0F?\u20E3"
 )
 RESULT_ADAPTER = TypeAdapter(DetectorResult)
 
@@ -151,16 +148,18 @@ def detect_email_addresses(text: str) -> EmailAddressesDetectorResult:
 
 
 def detect_emojis(text: str, max_emoji: int) -> EmojiDetectorResult:
-    emoji_groups = EMOJI_PATTERN.findall(text)
-    emoji_count = sum(len(group) for group in emoji_groups)
+    emojis = [
+        grapheme
+        for grapheme in GRAPHEME_PATTERN.findall(text)
+        if EMOJI_GRAPHEME_PATTERN.search(grapheme)
+    ]
+    emoji_count = len(emojis)
     return EmojiDetectorResult(
         name="emoji_check",
         detected=bool(emoji_count),
         confidence=1.0,
         count=emoji_count,
-        details=EmojiDetectionDetails(
-            max_emoji=max_emoji, emoji_count=emoji_count, emojis=emoji_groups
-        ),
+        details=EmojiDetectionDetails(max_emoji=max_emoji, emoji_count=emoji_count, emojis=emojis),
     )
 
 

@@ -114,7 +114,7 @@ def test_v2_exposes_all_local_legacy_detectors():
     response = client.post(
         "/api/v2/check",
         json={
-            "text": "@support_user user@example.org 😀😀",
+            "text": "@support_user user@e.co 😀😀",
             "detectors": [
                 "telegram_nick",
                 "message_length",
@@ -133,9 +133,9 @@ def test_v2_exposes_all_local_legacy_detectors():
     assert body["signal_count"] == 4
     by_name = {result["name"]: result for result in body["results"]}
     assert by_name["telegram_nick"]["details"]["nicknames"] == ["@support_user"]
-    assert by_name["message_length"]["count"] == 33
-    assert by_name["message_length"]["details"]["length"] == 33
-    assert by_name["email_addresses"]["details"]["emails"] == ["user@example.org"]
+    assert by_name["message_length"]["count"] == 26
+    assert by_name["message_length"]["details"]["length"] == 26
+    assert by_name["email_addresses"]["details"]["emails"] == ["user@e.co"]
     assert by_name["emoji_check"]["details"]["emoji_count"] == 2
 
 
@@ -159,6 +159,44 @@ def test_message_length_returns_text_length_in_count():
         "min_length": 10,
         "max_length": 2000,
     }
+
+
+def test_emoji_check_returns_each_grapheme_as_a_separate_entity():
+    response = client.post(
+        "/api/v2/check",
+        json={
+            "text": "🫤😐🫣🤔🤗😓😯🙄",
+            "detectors": ["emoji_check"],
+            "options": {"emoji_check": {"max_emoji": 5}},
+        },
+    )
+
+    assert response.status_code == 200
+    result = response.json()["results"][0]
+    assert result["detected"] is True
+    assert result["count"] == 8
+    assert result["details"] == {
+        "max_emoji": 5,
+        "emoji_count": 8,
+        "emojis": ["🫤", "😐", "🫣", "🤔", "🤗", "😓", "😯", "🙄"],
+    }
+
+
+def test_emoji_check_reports_six_entities_with_max_emoji_five():
+    response = client.post(
+        "/api/v2/check",
+        json={
+            "text": "😀😀😀😀😀😀",
+            "detectors": ["emoji_check"],
+            "options": {"emoji_check": {"max_emoji": 5}},
+        },
+    )
+
+    assert response.status_code == 200
+    result = response.json()["results"][0]
+    assert result["detected"] is True
+    assert result["count"] == 6
+    assert result["details"]["emoji_count"] == 6
 
 
 def test_legacy_policy_option_is_validation_error():

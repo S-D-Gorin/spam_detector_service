@@ -324,16 +324,20 @@
       "detected": true,
       "confidence": 1.0,
       "count": 2,
-      "details": {"max_emoji": 10, "emoji_count": 2, "emojis": ["😀😀"]}
+      "details": {"max_emoji": 10, "emoji_count": 2, "emojis": ["😀", "😀"]}
     }
   ]
 }
 ```
 
-**Особенности.** `max_emoji` необязателен и по умолчанию равен 10; он
-возвращается для совместимости с настройками v1, но не ограничивает и не
-фильтрует результат v2. `count` и `emoji_count` содержат число кодовых точек
-в найденных группах эмодзи.
+**Особенности.** Одна emoji entity — это один Unicode grapheme cluster: простой
+emoji, вариант с variation selector, emoji с модификатором тона кожи, ZWJ
+sequence, флаг из regional indicators или keycap считаются одной entity.
+Стоящие рядом простые emoji остаются отдельными entities. `count` и
+`emoji_count` равны числу таких entities, а `emojis` содержит их в порядке
+появления. `max_emoji` необязателен и по умолчанию равен 10; v2 возвращает его
+как параметр detector-а, но raw `detected` означает только наличие хотя бы
+одной entity. Применение лимита принадлежит потребителю API.
 
 ## `async_exemple`
 

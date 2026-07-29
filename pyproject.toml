@@ -7,6 +7,7 @@ dependencies = [
     "httpx",
     "pydantic>=2.9,<3",
     "pyyaml",
+    "regex>=2024.11.6",
     "uvicorn>=0.30,<1",
 ]
 

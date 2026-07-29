@@ -130,9 +130,7 @@ class DetectionRequest(StrictModel):
         if len(self.detectors) != len(set(self.detectors)):
             raise ValueError("detector names must be unique")
         configured = {
-            name
-            for name in DetectorName.__args__
-            if getattr(self.options, name) is not None
+            name for name in DetectorName.__args__ if getattr(self.options, name) is not None
         }
         unrequested = configured.difference(self.detectors)
         if unrequested:
@@ -238,7 +236,7 @@ class EmailAddressesDetectorResult(DetectorResultBase):
 
 class EmojiDetectorResult(DetectorResultBase):
     name: Literal["emoji_check"]
-    count: int = Field(ge=0, description="Number of detected emoji code points.")
+    count: int = Field(ge=0, description="Number of detected emoji grapheme clusters.")
     details: EmojiDetectionDetails
 
 
