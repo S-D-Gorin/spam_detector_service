@@ -1,8 +1,9 @@
 import asyncio
 from typing import List
+
 from fastapi.concurrency import run_in_threadpool
 
-from .schemas import SpamRequest, SpamResponse, CheckResult
+from .schemas import CheckResult, SpamRequest, SpamResponse
 from .services.checks import AVAILABLE_CHECKS
 
 
